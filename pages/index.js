@@ -22,13 +22,32 @@ function ProfileSidebar(propriedades) {
   )
 }
 
+function ProfileRelationsBox(propriedades) {
+  return (
+    <ProfileRelationsBoxWrapper>
+      <h2 className="smallTitle">
+       {propriedades.title} ({propriedades.items.length})
+      </h2>
+
+      {/* <ul>
+          {seguidores.map((itemAtual) => {
+            return (
+              <li key={itemAtual}>
+                <a href={`https://github.com/${itemAtual}.png`}>
+                  <img src={itemAtual} />
+                  <span>{itemAtual}</span>
+                </a>
+              </li>
+            )
+          })}
+        </ul> */}
+      </ProfileRelationsBoxWrapper>
+  )
+}
+
 export default function Home() {
   const usuarioAleatorio = 'joseprandj';
-  const [comunidades, setComunidades] = React.useState([{
-    id: '13213213232215646',
-    title: 'Eu odeio acordar cedo',
-    image: 'https://alurakut.vercel.app/capa-comunidade-01.jpg'
-  }]);
+  const [comunidades, setComunidades] = React.useState([]);
   // const comunidade = comunidades[0];
   // const alteradorDeComunidades/setComunidades = comunidades[1];
   const pessoasFavoritas = [
@@ -39,6 +58,41 @@ export default function Home() {
     'marcobrunodev',
     'felipefialho',
   ];
+
+  const [seguidores, setSeguigores] = React.useState([]);
+  React.useEffect(function() {
+    fetch('https://api.github.com/users/joseprandj/followers')
+	  .then(function (respostaDoServidor) {
+      return respostaDoServidor.json()
+    })
+    .then(function (respostaCompleta) {
+		  setSeguigores(respostaCompleta)
+    })
+
+    // API GraphQL
+    fetch('https://graphql.datocms.com/', {
+      method: 'POST',
+      headers: {
+        'Authorization': '8e4b771e73a660b82cd3d8d9e3d9a7',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ "query": `query {
+        allCommunities {
+          title
+          id
+          imageUrl
+          creatorSlug
+        }
+      }` })
+    })
+    .then( (response) => response.json() )
+    .then ((respostaCompleta) =>{
+      const comunidadesVindasDoDato = respostaCompleta.data.allCommunities
+      setComunidades(comunidadesVindasDoDato)
+    })
+  }, [])
+		
 
   return (
     <>
@@ -63,12 +117,25 @@ export default function Home() {
               const dadosDoForm = new FormData(e.target);
 
               const comunidade = {
-                id: new Date().toISOString(),
                 title: dadosDoForm.get('title'),
-                image: dadosDoForm.get('image'),
+                imageUrl: dadosDoForm.get('image'),
+                creatorSlug: usuarioAleatorio
               }
-              const comunidadesAtualizadas = [...comunidades, comunidade];
-              setComunidades(comunidadesAtualizadas)
+
+              fetch('/api/comunidades', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(comunidade) 
+              })
+              .then(async (res) => {
+                const dados = await res.json();
+                const comunidade = dados.registroCriado
+                const comunidadesAtualizadas = [...comunidades, comunidade];
+                setComunidades(comunidadesAtualizadas)
+              })
+
             }}>
               <div>
                 <input placeholder="Qual vai ser o nome da sua Comunidade?" name="title" aria-label="Qual vai ser o nome da sua Comunidade?" type="text"/>
@@ -85,6 +152,8 @@ export default function Home() {
           </Box>
         </div>
         <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
+          <ProfileRelationsBox title="Seguidores" items={seguidores} />
+          
           <ProfileRelationsBoxWrapper>
             <h2 className="smallTitle">
               Comunidades ({comunidades.length})
@@ -94,8 +163,8 @@ export default function Home() {
                 {comunidades.map((itemAtual) => {
                   return (
                     <li key={itemAtual.id}>
-                      <a href={`/users/${itemAtual.title}`}>
-                        <img src={itemAtual.image} />
+                      <a href={`/communities/${itemAtual.id}`}>
+                        <img src={itemAtual.imageUrl} />
                         <span>{itemAtual.title}</span>
                       </a>
                     </li>
